@@ -1,0 +1,10 @@
+[sources.syslog]
+type = "syslog"
+address = "0.0.0.0:514"
+
+[sinks.clickhouse]
+type = "clickhouse"
+inputs = ["syslog"]
+database = "default"
+table = "logs"
+endpoint = "http://{{ groups['clickhouse'][0] }}:8123"

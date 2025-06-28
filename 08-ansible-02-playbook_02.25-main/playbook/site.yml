@@ -1,4 +1,20 @@
 ---
+- name: Deploy ClickHouse, Vector, Lighthouse
+  hosts: all
+  gather_facts: true
+  become: true
+
+  tasks:
+    - name: Install common dependencies (curl, gnupg, etc.)
+      ansible.builtin.apt:
+        name:
+          - curl
+          - gnupg
+          - apt-transport-https
+          - ca-certificates
+        state: present
+        update_cache: yes
+
 - name: Install Clickhouse
   hosts: clickhouse
   become: true
@@ -8,21 +24,13 @@
       ansible.builtin.service:
         name: clickhouse-server
         state: restarted
-  tasks:
-    - name: Install dependencies (apt-transport-https, ca-certificates, gnupg)
-      ansible.builtin.apt:
-        name:
-          - apt-transport-https
-          - ca-certificates
-          - gnupg
-        state: present
-        update_cache: yes
 
+  tasks:
     - name: Add ClickHouse GPG key
       ansible.builtin.apt_key:
         url: "https://packages.clickhouse.com/rpm/lts/repodata/repomd.xml.key"
         state: present
-  
+
     - name: Add ClickHouse repository
       ansible.builtin.apt_repository:
         repo: "deb https://packages.clickhouse.com/deb stable main"
@@ -62,3 +70,52 @@
       register: create_db
       failed_when: create_db.rc != 0 and create_db.rc !=82
       changed_when: create_db.rc == 0
+
+- name: Install Vector
+  hosts: vector
+  become: true
+  handlers:
+    - name: Start Vector service
+      become: true
+      ansible.builtin.systemd:
+        daemon_reload: true
+        enabled: false
+        name: vector.service
+        state: restarted
+
+  tasks:
+    - name: Create vector work directory
+      ansible.builtin.file:
+        path: "{{ vector_workdir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Get Vector distrib
+      ansible.builtin.get_url:
+        url: https://github.com/GlubuchikAr/ansible/blob/main/08-ansible-02-playbook_02.25-main/0.47.0-1_amd64.deb
+        dest: "{{ vector_workdir }}/vector-0.47.0-1_amd64.deb"
+        mode: "0644"
+
+    - name: Install Vector
+      become: true
+      ansible.builtin.apt:
+        deb: "{{ vector_workdir }}/vector-0.47.0-1_amd64.deb"
+
+    - name: Check Vector installation
+      ansible.builtin.command: vector --version
+      register: var_vector
+      failed_when: var_vector.rc != 0
+      changed_when: var_vector.rc == 0
+
+    - name: Deploy Vector config
+      ansible.builtin.template:
+        src: templates/vector.toml.j2
+        dest: /etc/vector/vector.toml
+        mode: 0644
+      notify: Restart Vector
+
+    - name: Enable and start Vector
+      ansible.builtin.service:
+        name: vector
+        state: started
+        enabled: yes
