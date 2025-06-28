@@ -1,6 +1,7 @@
 ---
 - name: Install Clickhouse
   hosts: clickhouse
+  become: true
   handlers:
     - name: Start clickhouse service
       become: true
@@ -8,27 +9,54 @@
         name: clickhouse-server
         state: restarted
   tasks:
-    - block:
-        - name: Get clickhouse distrib
-          ansible.builtin.get_url:
-            url: "https://packages.clickhouse.com/rpm/stable/{{ item }}-{{ clickhouse_version }}.noarch.rpm"
-            dest: "./{{ item }}-{{ clickhouse_version }}.rpm"
-          with_items: "{{ clickhouse_packages }}"
-      rescue:
-        - name: Get clickhouse distrib
-          ansible.builtin.get_url:
-            url: "https://packages.clickhouse.com/rpm/stable/clickhouse-common-static-{{ clickhouse_version }}.x86_64.rpm"
-            dest: "./clickhouse-common-static-{{ clickhouse_version }}.rpm"
-    - name: Install clickhouse packages
-      become: true
-      ansible.builtin.yum:
+    - name: Install dependencies (apt-transport-https, ca-certificates, gnupg)
+      ansible.builtin.apt:
         name:
-          - clickhouse-common-static-{{ clickhouse_version }}.rpm
-          - clickhouse-client-{{ clickhouse_version }}.rpm
-          - clickhouse-server-{{ clickhouse_version }}.rpm
-      notify: Start clickhouse service
+          - apt-transport-https
+          - ca-certificates
+          - gnupg
+        state: present
+        update_cache: yes
+
+    - name: Add ClickHouse GPG key
+      ansible.builtin.apt_key:
+        url: "https://packages.clickhouse.com/rpm/lts/repodata/repomd.xml.key"
+        state: present
+  
+    - name: Add ClickHouse repository
+      ansible.builtin.apt_repository:
+        repo: "deb https://packages.clickhouse.com/deb stable main"
+        state: present
+        filename: clickhouse.list
+
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: yes
+
+    - name: Install ClickHouse packages
+      ansible.builtin.apt:
+        name: "{{ clickhouse_packages }}"
+        state: present
+        force_apt_get: yes
+
+    - name: Ensure ClickHouse service is enabled and started
+      ansible.builtin.service:
+        name: clickhouse-server
+        state: started
+        enabled: yes
+
+    - name: Verify ClickHouse is running
+      ansible.builtin.command: clickhouse-client --query "SELECT version()"
+      register: clickhouse_version_check
+      ignore_errors: yes
+
+    - name: Display ClickHouse version
+      ansible.builtin.debug:
+        var: clickhouse_version_check.stdout
+
     - name: Flush handlers
       meta: flush_handlers
+
     - name: Create database
       ansible.builtin.command: "clickhouse-client -q 'create database logs;'"
       register: create_db
