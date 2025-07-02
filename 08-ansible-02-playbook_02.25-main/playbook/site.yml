@@ -13,13 +13,13 @@
           - apt-transport-https
           - ca-certificates
         state: present
-        update_cache: yes
+        update_cache: true
 
 - name: Install Clickhouse
   hosts: clickhouse
   become: true
   handlers:
-    - name: Start clickhouse service
+    - name: Restart ClickHouse
       become: true
       ansible.builtin.service:
         name: clickhouse-server
@@ -39,43 +39,59 @@
 
     - name: Update apt cache
       ansible.builtin.apt:
-        update_cache: yes
+        update_cache: true
 
     - name: Install ClickHouse packages
       ansible.builtin.apt:
         name: "{{ clickhouse_packages }}"
         state: present
-        force_apt_get: yes
+        force_apt_get: true
 
     - name: Ensure ClickHouse service is enabled and started
       ansible.builtin.service:
         name: clickhouse-server
         state: started
-        enabled: yes
+        enabled: true
 
-    - name: Verify ClickHouse is running
-      ansible.builtin.command: clickhouse-client --query "SELECT version()"
-      register: clickhouse_version_check
-      ignore_errors: yes
+    # - name: Verify ClickHouse is running
+    #   ansible.builtin.command: clickhouse-client --query "SELECT version()"
+    #   register: clickhouse_version_check
+    #   ignore_errors: true
 
     - name: Display ClickHouse version
       ansible.builtin.debug:
         var: clickhouse_version_check.stdout
 
-    - name: Flush handlers
-      meta: flush_handlers
+    - name: Copy ClickHouse config
+      ansible.builtin.template:
+        src: templates/clickhouse/config.xml.j2
+        dest: /etc/clickhouse-server/config.xml
+        owner: clickhouse
+        group: clickhouse
+        mode: "0640"
+
+    - name: Copy ClickHouse users
+      ansible.builtin.template:
+        src: templates/clickhouse/users.xml.j2
+        dest: /etc/clickhouse-server/users.xml
+        owner: clickhouse
+        group: clickhouse
+        mode: "0640"
+      notify: Restart ClickHouse
 
     - name: Create database
-      ansible.builtin.command: "clickhouse-client -q 'create database logs;'"
+      ansible.builtin.command: "clickhouse-client --host {{ ansible_host }} -q 'CREATE DATABASE IF NOT EXISTS logs;'"
       register: create_db
-      failed_when: create_db.rc != 0 and create_db.rc !=82
+      failed_when: 
+        - create_db.rc != 0 and create_db.rc !=82
+        - "'already exists' not in create_db.stderr"
       changed_when: create_db.rc == 0
 
 - name: Install Vector
   hosts: vector
   become: true
   handlers:
-    - name: Start Vector service
+    - name: Restart Vector
       become: true
       ansible.builtin.systemd:
         daemon_reload: true
@@ -91,8 +107,8 @@
         mode: "0755"
 
     - name: Get Vector distrib
-      ansible.builtin.get_url:
-        url: https://github.com/GlubuchikAr/ansible/blob/main/08-ansible-02-playbook_02.25-main/0.47.0-1_amd64.deb
+      ansible.builtin.copy:
+        src: templates/0.47.0-1_amd64.deb
         dest: "{{ vector_workdir }}/vector-0.47.0-1_amd64.deb"
         mode: "0644"
 
@@ -111,11 +127,11 @@
       ansible.builtin.template:
         src: templates/vector.toml.j2
         dest: /etc/vector/vector.toml
-        mode: 0644
+        mode: "0644"
       notify: Restart Vector
 
     - name: Enable and start Vector
       ansible.builtin.service:
         name: vector
         state: started
-        enabled: yes
+        enabled: true

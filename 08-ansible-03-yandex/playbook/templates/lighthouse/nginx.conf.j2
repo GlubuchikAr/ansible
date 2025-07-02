@@ -1,0 +1,10 @@
+server {
+    listen 80;
+    server_name lighthouse;
+    root /opt/lighthouse;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
