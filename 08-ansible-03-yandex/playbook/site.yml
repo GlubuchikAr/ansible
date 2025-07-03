@@ -16,6 +16,7 @@
         update_cache: true
 
 - name: Install Clickhouse
+  tags: clickhouse
   hosts: clickhouse
   become: true
   handlers:
@@ -70,14 +71,14 @@
         group: clickhouse
         mode: "0640"
 
-    - name: Copy ClickHouse users
-      ansible.builtin.template:
-        src: templates/clickhouse/users.xml.j2
-        dest: /etc/clickhouse-server/users.xml
-        owner: clickhouse
-        group: clickhouse
-        mode: "0640"
-      notify: Restart ClickHouse
+    # - name: Copy ClickHouse users
+    #   ansible.builtin.template:
+    #     src: templates/clickhouse/users.xml.j2
+    #     dest: /etc/clickhouse-server/users.xml
+    #     owner: clickhouse
+    #     group: clickhouse
+    #     mode: "0640"
+    #   notify: Restart ClickHouse
 
     - name: Create database
       ansible.builtin.command: "clickhouse-client --host {{ ansible_host }} --port 9000 -q 'CREATE DATABASE IF NOT EXISTS {{ all_clickhouse_db }};'"
@@ -94,6 +95,7 @@
       changed_when: create_table == 0
 
 - name: Install Vector
+  tags: vector
   hosts: vector
   become: true
   handlers:
@@ -143,6 +145,7 @@
         enabled: true
 
 - name: Install and Configure Lighthouse
+  tags: lighthouse
   hosts: lighthouse
   become: true
   handlers:
@@ -160,23 +163,11 @@
         state: present
         update_cache: true
 
-    # - name: Install Node.js and npm
-    #   ansible.builtin.apt:
-    #     name:
-    #       - nodejs
-    #       - npm
-    #     state: present
-
     - name: Clone Lighthouse repository
       ansible.builtin.git:
         repo: "{{ lighthouse_repo }}"
         dest: "{{ lighthouse_data_dir}}" 
         version: "{{ lighthouse_version }}"
-
-    # - name: Install Lighthouse dependencies
-    #   ansible.builtin.command: npm install
-    #   args:
-    #     chdir: /opt/lighthouse
 
     - name: Prepare nginx config
       tags: "nginx"
