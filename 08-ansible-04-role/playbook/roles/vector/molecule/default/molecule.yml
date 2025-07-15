@@ -1,0 +1,34 @@
+---
+driver:
+  name: docker
+platforms:
+  - name: ub
+    image: geerlingguy/docker-ubuntu2004-ansible
+    pre_build_image: true
+    command: ["sleep", "infinity"]  # Измененная команда
+    tmpfs:
+      - /tmp:exec,mode=1777  # Добавлены права
+      - /run
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    privileged: true
+    groups:
+      - molecule
+provisioner:
+  name: ansible
+  connection_options:
+    ansible_connection: docker
+  config_options:
+    defaults:
+      remote_tmp: /tmp/.ansible
+      interpreter_python: /usr/bin/python3
+      internal_poll_interval: 0.001
+    ssh_connection:
+      pipelining: true
+  inventory:
+    group_vars:
+      all:
+        ansible_user: root
+        ansible_python_interpreter: /usr/bin/python3
+verifier:
+  name: ansible
