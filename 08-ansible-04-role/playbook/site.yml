@@ -1,0 +1,115 @@
+---
+- name: Deploy ClickHouse, Vector, Lighthouse
+  hosts: all
+  gather_facts: true
+  become: true
+
+  tasks:
+    - name: Install common dependencies (curl, gnupg, etc.)
+      ansible.builtin.apt:
+        name:
+          - curl
+          - gnupg
+          - apt-transport-https
+          - ca-certificates
+        state: present
+        update_cache: true
+
+- name: Install Clickhouse
+  tags: clickhouse
+  hosts: clickhouse
+  become: true
+  roles: 
+    - clickhouse
+  tasks:
+    - name: Create Clickhouse table
+      ansible.builtin.command: clickhouse-client -q 'CREATE TABLE IF NOT EXISTS logs.{{ all_clickhouse_table }} (message String) ENGINE = MergeTree() ORDER BY tuple();'
+      register: create_table
+      failed_when: create_table.rc != 0 and create_table.rc != 82
+      changed_when: create_table.rc == 0
+
+- name: Install Vector
+  tags: vector
+  hosts: vector
+  become: true
+  handlers:
+    - name: Restart Vector
+      become: true
+      ansible.builtin.systemd:
+        daemon_reload: true
+        enabled: false
+        name: vector.service
+        state: restarted
+
+  tasks:
+    - name: Create vector work directory
+      ansible.builtin.file:
+        path: "{{ vector_workdir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Get Vector distrib
+      ansible.builtin.copy:
+        src: templates/0.47.0-1_amd64.deb
+        dest: "{{ vector_workdir }}/vector-0.47.0-1_amd64.deb"
+        mode: "0644"
+
+    - name: Install Vector
+      become: true
+      ansible.builtin.apt:
+        deb: "{{ vector_workdir }}/vector-0.47.0-1_amd64.deb"
+
+    - name: Check Vector installation
+      ansible.builtin.command: vector --version
+      register: var_vector
+      failed_when: var_vector.rc != 0
+      changed_when: var_vector.rc == 0
+
+    - name: Deploy Vector config
+      ansible.builtin.template:
+        src: templates/vector/vector.yaml.j2
+        dest: /etc/vector/vector.yaml
+        mode: "0644"
+      notify: Restart Vector
+
+    - name: Enable and start Vector
+      ansible.builtin.service:
+        name: vector
+        state: started
+        enabled: true
+
+- name: Install and Configure Lighthouse
+  tags: lighthouse
+  hosts: lighthouse
+  become: true
+  handlers:
+    - name: Restart Nginx
+      ansible.builtin.service:
+        name: nginx
+        state: restarted
+
+  tasks:
+    - name: Install Nginx
+      ansible.builtin.apt:
+        name: 
+          - nginx
+          - git
+        state: present
+        update_cache: true
+
+    - name: Clone Lighthouse repository
+      ansible.builtin.git:
+        repo: "{{ lighthouse_repo }}"
+        dest: "{{ lighthouse_data_dir}}" 
+        version: "{{ lighthouse_version }}"
+
+    - name: Prepare nginx config
+      tags: "nginx"
+      become: true
+      ansible.builtin.template:
+        src: "templates/lighthouse/lighthouse.conf.j2"
+        dest: "/etc/nginx/conf.d/{{ lighthouse_nginx_conf }}"
+        mode: "0644"
+        owner: root
+        group: root
+      notify: Restart Nginx

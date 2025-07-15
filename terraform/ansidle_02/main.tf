@@ -19,8 +19,8 @@ resource "yandex_compute_instance" "clickhouse" {
   platform_id = "standard-v1"
   resources {
     cores         = 2
-    memory        = 1
-    core_fraction = 5
+    memory        = 2
+    core_fraction = 10
   }
   boot_disk {
     initialize_params {

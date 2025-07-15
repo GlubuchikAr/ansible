@@ -1,0 +1,7 @@
+ansible_user: "ubuntu"
+ansible_ssh_private_key_file: "/home/glubuchik/.ssh/aglubuchik"
+all_clickhouse_table: "logs_table"
+all_clickhouse_db: "logs"
+all_clickhouse_url: "http://192.168.88.149:8123"
+clickhouseuser: "user"
+clickhousepassword: "123456"
