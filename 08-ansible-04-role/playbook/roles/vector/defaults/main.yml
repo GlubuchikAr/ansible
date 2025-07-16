@@ -5,26 +5,3 @@ vector_version: 0.47.0
 vector_config_dir: "{{ ansible_user_dir }}/vector_config"
 # Vector config dir
 vector_config:
-  data_dir: "{{ vector_data_dir }}"
-  sources:
-    syslog:
-      type: "demo_logs"
-      format: "syslog"
-      interval: 1
-  sinks:
-    clickhouse_logs:
-      type: "clickhouse"
-      inputs: ["syslog"]
-      database: "{{ all_clickhouse_db }}"
-      endpoint: "{{ all_clickhouse_url }}"
-      table: "{{ all_clickhouse_table }}"
-      acknowledgements:
-        enabled: false
-      healthcheck:
-        enabled: false
-      compression: "gzip"
-      skip_unknown_fields: true
-      auth:
-        password: "{{ clickhousepassword }}"
-        user: "{{ clickhouseuser }}"
-        strategy: "basic"
