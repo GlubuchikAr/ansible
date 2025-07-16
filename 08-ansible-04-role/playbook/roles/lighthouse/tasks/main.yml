@@ -1,0 +1,27 @@
+#SPDX-License-Identifier: MIT-0
+---
+# tasks file for lighthouse
+- name: Install Nginx
+  ansible.builtin.apt:
+    name: 
+      - nginx
+      - git
+    state: present
+    update_cache: true
+
+- name: Clone Lighthouse repository
+  ansible.builtin.git:
+    repo: "{{ lighthouse_repo }}"
+    dest: "{{ lighthouse_data_dir }}" 
+    version: "{{ lighthouse_version }}"
+
+- name: Prepare nginx config
+  tags: "nginx"
+  become: true
+  ansible.builtin.template:
+    src: "templates/lighthouse.conf.j2"
+    dest: "/etc/nginx/conf.d/lighthouse.conf"
+    mode: "0644"
+    owner: root
+    group: root
+  notify: Restart Nginx
