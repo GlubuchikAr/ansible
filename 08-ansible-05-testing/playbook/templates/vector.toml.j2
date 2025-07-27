@@ -1,0 +1,22 @@
+data_dir = "{{ vector_data_dir }}"
+
+[sources.syslog]
+type = "demo_logs"
+format = "syslog"
+interval = 1
+
+[sinks.clickhouse_logs]
+type = "clickhouse"
+inputs = ["syslog"]
+database = "{{ all_clickhouse_db }}"
+endpoint = "{{ all_clickhouse_url }}"
+table = "{{ all_clickhouse_table }}"
+
+[sinks.clickhouse_logs.acknowledgements]
+enabled = false
+
+[sinks.clickhouse_logs.healthcheck]
+enabled = false
+
+compression = "gzip"
+skip_unknown_fields = true

@@ -1,0 +1,17 @@
+#SPDX-License-Identifier: MIT-0
+---
+# defaults file for lighthouse
+lighthouse_repo: "https://github.com/VKCOM/lighthouse.git"
+lighthouse_version: "master"
+lighthouse_data_dir: "/opt/lighthouse"
+lighthouse_nginx_config: |
+  server {
+      listen 80;
+      server_name lighthouse;
+      root {{ lighthouse_data_dir }};
+      index index.html;
+
+      location / {
+          try_files $uri $uri/ /index.html;
+      }
+  }

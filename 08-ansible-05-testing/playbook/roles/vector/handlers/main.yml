@@ -1,0 +1,3 @@
+---
+- name: restart vector service
+  ansible.builtin.include_tasks: restart_vector.yml

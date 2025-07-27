@@ -1,0 +1,31 @@
+services:
+  clickhouse:
+    image: python:latest
+    container_name: clickhouse
+    tty: true # Обеспечивает интерактивный TTY
+    stdin_open: true # Позволяет держать контейнер открытым
+    command: [ "tail", "-f", "/dev/null" ] # Бесконечная команда для поддержания работы
+    networks:
+      - app_net
+
+  vector:
+    image: python:latest
+    container_name: vector
+    tty: true # Обеспечивает интерактивный TTY
+    stdin_open: true # Позволяет держать контейнер открытым
+    command: [ "tail", "-f", "/dev/null" ] # Бесконечная команда для поддержания работы
+    networks:
+      - app_net
+
+  lighthouse:
+    image: python:latest
+    container_name: lighthouse
+    tty: true # Обеспечивает интерактивный TTY
+    stdin_open: true # Позволяет держать контейнер открытым
+    command: [ "tail", "-f", "/dev/null" ] # Бесконечная команда для поддержания работы
+    networks:
+      - app_net
+
+networks:
+  app_net:
+    driver: bridge

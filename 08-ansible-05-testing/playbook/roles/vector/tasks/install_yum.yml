@@ -1,0 +1,13 @@
+---
+- name: Install Vector | Get Vector distrib
+  ansible.builtin.copy:
+    src: templates/0.48.0-1.x86_64.rpm
+    dest: "/tmp/vector-0.48.0-1.x86_64.rpm"
+    mode: "0644"
+
+- name: Install Vector | RPM install
+  become: true
+  ansible.builtin.yum:
+    deb: "/tmp/vector-0.48.0-1.x86_64.rpm"
+    state: present
+  # notify: restart vector service

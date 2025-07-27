@@ -1,0 +1,22 @@
+---
+- name: restart vector service
+  block:
+    - name: Try systemd restart (if available)
+      become: true
+      ansible.builtin.systemd:
+        name: vector
+        state: restarted
+        daemon_reload: yes
+      ignore_errors: yes
+      register: systemd_restart
+      when: ansible_facts.service_mgr == "systemd"
+
+    - name: Fallback to manual restart if systemd failed
+      become: true
+      ansible.builtin.command: |
+        sh -c 'pkill -f "/usr/bin/vector" && sleep 1
+        /usr/bin/vector --config /etc/vector/vector.yml &'
+      args:
+        executable: /bin/bash
+      when: 
+        - ansible_facts.service_mgr != "systemd" or systemd_restart is failed

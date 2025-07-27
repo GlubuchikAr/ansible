@@ -1,0 +1,24 @@
+---
+clickhouse_version: "22.3.3.44"
+# clickhouse_packages:
+#   - clickhouse-client
+#   - clickhouse-server
+#   - clickhouse-common-static
+
+# clickhouse_listen_host_custom:
+#   - "0.0.0.0"
+
+clickhouse_listen_host:
+  - "::"
+
+clickhouse_users_custom:
+      - { name: "{{ clickhouseuser }}",
+          password: "{{ clickhousepassword }}",
+          networks: { 192.168.88.0/24 },
+          profile: "default",
+          quota: "default",
+          dbs: [ "{{ all_clickhouse_db }}" ] ,
+        }
+
+clickhouse_dbs_custom:
+      - { name: "{{ all_clickhouse_db }}" }
